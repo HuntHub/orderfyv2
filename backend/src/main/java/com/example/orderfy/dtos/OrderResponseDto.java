@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class CustomerApiRequestDto {
-    private String customerId;
+public class OrderResponseDto {
+    private String givenName;
+    private String familyName;
 }

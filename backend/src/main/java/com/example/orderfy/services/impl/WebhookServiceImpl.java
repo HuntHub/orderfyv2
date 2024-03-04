@@ -45,13 +45,10 @@ public class WebhookServiceImpl implements WebhookService {
     public void handleWebhook(String payload) throws JsonProcessingException {
         JsonNode rootNode = objectMapper.readTree(payload);
 
-        // Assuming the entire JSON you provided is the value of "body"
         String bodyString = rootNode.path("body").asText();
 
-        // Parse the string inside "body" to a JsonNode
         JsonNode bodyNode = objectMapper.readTree(bodyString);
 
-        // Now, navigate to the "customer_id" inside the nested structure
         JsonNode customerNode = bodyNode.path("data").path("object").path("payment");
         String customerId = customerNode.path("customer_id").asText();
         String merchantId = bodyNode.path("merchant_id").asText();
@@ -83,8 +80,7 @@ public class WebhookServiceImpl implements WebhookService {
                 JsonNode responseNode = objectMapper.readTree(responseBody);
                 System.out.println("Response node: " + responseNode);
 
-                // Assuming the structure of the response JSON, adjust the path as necessary
-                JsonNode processNode = responseNode.path("customer"); // Adjust the path based on actual response structure
+                JsonNode processNode = responseNode.path("customer");
                 String givenName = processNode.path("given_name").asText("");
                 String familyName = processNode.path("family_name").asText("");
                 String email = processNode.path("email_address").asText("");
@@ -106,7 +102,7 @@ public class WebhookServiceImpl implements WebhookService {
                 item.put("email", new AttributeValue().withS(email));
                 item.put("full_Name", new AttributeValue().withS(fullName));
                 item.put("order_Status", new AttributeValue().withS("NEW"));
-                item.put("event_Id", new AttributeValue().withS(eventId));
+                item.put("order_Id", new AttributeValue().withS(eventId));
 
                 PutItemRequest request = new PutItemRequest()
                         .withTableName("orderfy_test_table")
@@ -119,7 +115,6 @@ public class WebhookServiceImpl implements WebhookService {
             }
         } else {
             System.out.println("Failed to retrieve customer data from Square API");
-            // Handle API error response
         }
     }
 
@@ -157,7 +152,7 @@ public class WebhookServiceImpl implements WebhookService {
         if (getSecretValueResponse != null) {
             String secretString = getSecretValueResponse.secretString();
             JsonNode jsonNode = objectMapper.readTree(secretString);
-            String secretValue = jsonNode.get("MLSDY8NGXY7RZ").asText();
+            String secretValue = jsonNode.get(merchantId).asText();
             System.out.println(secretValue);
             return secretValue;
         } else {
