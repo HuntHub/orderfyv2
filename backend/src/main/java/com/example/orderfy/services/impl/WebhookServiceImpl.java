@@ -60,7 +60,6 @@ public class WebhookServiceImpl implements WebhookService {
         System.out.println("Customer ID: " + customerId);
         System.out.println("Merchant ID: " + merchantId);
 
-        //String squareApiToken = fetchSquareApiToken(merchantId);
         String squareApiToken = getSecret(merchantId);
 
         HttpHeaders headers = new HttpHeaders();
@@ -92,7 +91,9 @@ public class WebhookServiceImpl implements WebhookService {
                 String fullName = givenName + " " + (!familyName.isEmpty() ? familyName.charAt(0) : "");
                 System.out.println("Received customer data: " + fullName);
 
-                BasicAWSCredentials awsCredentials = new BasicAWSCredentials("AKIAW3MEBBVCKCIW34MO", "qMClwzOEJXETvV9qsFdipKh/JfQnPqg7blfN2OxW");
+                String accessKeyId = System.getenv("AWS_ACCESS_KEY_ID");
+                String secretAccessKey = System.getenv("AWS_SECRET_ACCESS_KEY");
+                BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
 
                 AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
                         .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
@@ -128,8 +129,9 @@ public class WebhookServiceImpl implements WebhookService {
         String secretName = "merchant-" + merchantId + "-api-token";
         Region region = Region.US_EAST_1;
 
-        // Provide AWS credentials using AwsBasicCredentialsProvider
-        AwsBasicCredentials credentials = AwsBasicCredentials.create("AKIAW3MEBBVCKCIW34MO", "qMClwzOEJXETvV9qsFdipKh/JfQnPqg7blfN2OxW");
+        String accessKeyId = System.getenv("AWS_ACCESS_KEY_ID");
+        String secretAccessKey = System.getenv("AWS_SECRET_ACCESS_KEY");
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
         AwsCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(credentials);
 
 
