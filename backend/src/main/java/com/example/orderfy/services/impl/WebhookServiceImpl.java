@@ -1,7 +1,24 @@
 package com.example.orderfy.services.impl;
 
-import com.example.orderfy.dtos.WebhookPayloadDto;
-import com.example.orderfy.dtos.CustomerApiResponseDto;
+import com.amazonaws.SdkClientException;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import lombok.SneakyThrows;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.example.orderfy.services.WebhookService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,12 +30,17 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class WebhookServiceImpl implements WebhookService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+
     @Override
     public void handleWebhook(String payload) throws JsonProcessingException {
         JsonNode rootNode = objectMapper.readTree(payload);
@@ -32,11 +54,14 @@ public class WebhookServiceImpl implements WebhookService {
         // Now, navigate to the "customer_id" inside the nested structure
         JsonNode customerNode = bodyNode.path("data").path("object").path("payment");
         String customerId = customerNode.path("customer_id").asText();
+        String merchantId = bodyNode.path("merchant_id").asText();
+        String eventId = bodyNode.path("event_id").asText();
 
         System.out.println("Customer ID: " + customerId);
+        System.out.println("Merchant ID: " + merchantId);
 
         //String squareApiToken = fetchSquareApiToken(merchantId);
-        String squareApiToken = "EAAAEP55lWQwSc-rSQS41rzwSKKCZIyJ2I1GitMw49ZA0jvNc6wbsX5eHq8luQi0";
+        String squareApiToken = getSecret(merchantId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(squareApiToken);
@@ -63,8 +88,30 @@ public class WebhookServiceImpl implements WebhookService {
                 JsonNode processNode = responseNode.path("customer"); // Adjust the path based on actual response structure
                 String givenName = processNode.path("given_name").asText("");
                 String familyName = processNode.path("family_name").asText("");
+                String email = processNode.path("email_address").asText("");
                 String fullName = givenName + " " + (!familyName.isEmpty() ? familyName.charAt(0) : "");
                 System.out.println("Received customer data: " + fullName);
+
+                BasicAWSCredentials awsCredentials = new BasicAWSCredentials("AKIAW3MEBBVCKCIW34MO", "qMClwzOEJXETvV9qsFdipKh/JfQnPqg7blfN2OxW");
+
+                AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
+                        .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
+                        .withRegion(Regions.US_EAST_1)
+                        .build();
+
+                Map<String, AttributeValue> item = new HashMap<>();
+                item.put("merchant_Id", new AttributeValue().withS(merchantId));
+                item.put("customer_Id", new AttributeValue().withS(customerId));
+                item.put("email", new AttributeValue().withS(email));
+                item.put("full_Name", new AttributeValue().withS(fullName));
+                item.put("order_Status", new AttributeValue().withS("NEW"));
+                item.put("event_Id", new AttributeValue().withS(eventId));
+
+                PutItemRequest request = new PutItemRequest()
+                        .withTableName("orderfy_test_table")
+                        .withItem(item);
+
+                PutItemResult result = client.putItem(request);
 
             } else {
                 System.out.println("Customer data not found");
@@ -74,9 +121,45 @@ public class WebhookServiceImpl implements WebhookService {
             // Handle API error response
         }
     }
-    private String fetchSquareApiToken(String merchantId) {
-        // Call an external service or AWS Secrets Manager to fetch the Square API token based on the merchant ID
-        // For simplicity, let's assume a hardcoded value here
-        return "YOUR_SQUARE_API_TOKEN";
+
+    @SneakyThrows
+    public String getSecret(String merchantId) throws ResourceNotFoundException {
+
+        String secretName = "merchant-" + merchantId + "-api-token";
+        Region region = Region.US_EAST_1;
+
+        // Provide AWS credentials using AwsBasicCredentialsProvider
+        AwsBasicCredentials credentials = AwsBasicCredentials.create("AKIAW3MEBBVCKCIW34MO", "qMClwzOEJXETvV9qsFdipKh/JfQnPqg7blfN2OxW");
+        AwsCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(credentials);
+
+
+        SecretsManagerClient client = SecretsManagerClient.builder()
+                .credentialsProvider(credentialsProvider)
+                .region(region)
+                .build();
+
+        GetSecretValueRequest getSecretValueRequest = GetSecretValueRequest.builder()
+                .secretId(secretName)
+                .build();
+
+        GetSecretValueResponse getSecretValueResponse = null;
+
+        try {
+            getSecretValueResponse = client.getSecretValue(getSecretValueRequest);
+            System.out.println(getSecretValueResponse);
+        } catch (ResourceNotFoundException e) {
+            System.err.println("Secret not found: " + e.getMessage());
+        } catch (SdkClientException e) {
+            System.err.println("An error occurred while communicating with AWS Secrets Manager: " + e.getMessage());
+        }
+        if (getSecretValueResponse != null) {
+            String secretString = getSecretValueResponse.secretString();
+            JsonNode jsonNode = objectMapper.readTree(secretString);
+            String secretValue = jsonNode.get("MLSDY8NGXY7RZ").asText();
+            System.out.println(secretValue);
+            return secretValue;
+        } else {
+            throw new IllegalStateException("Failed to retrieve secret for merchant ID: " + merchantId);
+        }
     }
 }
