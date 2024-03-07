@@ -35,11 +35,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class WebhookServiceImpl implements WebhookService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+
+    public WebhookServiceImpl(RestTemplate restTemplate, ObjectMapper objectMapper) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public void handleWebhook(String payload) throws JsonProcessingException {
@@ -119,7 +123,7 @@ public class WebhookServiceImpl implements WebhookService {
     }
 
     @SneakyThrows
-    public String getSecret(String merchantId) throws ResourceNotFoundException {
+    public String getSecret(String merchantId) throws ResourceNotFoundException, JsonProcessingException {
 
         String secretName = "merchant-" + merchantId + "-api-token";
         Region region = Region.US_EAST_1;

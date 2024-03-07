@@ -14,11 +14,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
-@RequiredArgsConstructor
 public class OrderController {
 
     private final WebhookService webhookService;
     private final OrderService orderService;
+
+    public OrderController(WebhookService webhookService, OrderService orderService) {
+        this.webhookService = webhookService;
+        this.orderService = orderService;
+    }
 
     @PostMapping("/create")
     public ResponseEntity<Void> handleWebhook(@RequestBody String payload) throws JsonProcessingException {
@@ -26,8 +30,13 @@ public class OrderController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/all")
-    public List<OrderResponseDto> getAllOrders(@RequestBody OrderRequestDto orderRequestDto) throws JsonProcessingException {
-        return orderService.getAllOrders(orderRequestDto);
+    @GetMapping("/{id}")
+    public List<OrderResponseDto> getAllOrders(@PathVariable String id) throws JsonProcessingException {
+        return orderService.getAllOrders(id);
+    }
+
+    @PatchMapping("{id}/update")
+    public void updateOrderStatus(@PathVariable String id) {
+        orderService.updateOrderStatus(id);
     }
 }

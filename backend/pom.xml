@@ -48,13 +48,6 @@
 			<version>5.1.0</version>
 		</dependency>
 
-		<!-- AWS Java SDK for DynamoDB -->
-		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk-dynamodb</artifactId>
-			<version>1.12.671</version>
-		</dependency>
-
 		<!-- AWS Lambda Core for AWS Lambda support -->
 		<dependency>
 			<groupId>com.amazonaws</groupId>
@@ -90,13 +83,6 @@
 			<version>${org.mapstruct.version}</version>
 		</dependency>
 
-		<!-- AWS SDK for Cognito -->
-		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk-cognitoidp</artifactId>
-			<version>1.12.671</version>
-		</dependency>
-
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-java-sdk-secretsmanager</artifactId>
@@ -109,16 +95,64 @@
 			<version>2.17.98</version> <!-- Use the latest version available -->
 		</dependency>
 
+		<!-- Spring Cloud for AWS -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-aws</artifactId>
+			<version>2.2.6.RELEASE</version>
+		</dependency>
+
+		<!-- AWS SDK V2 DynamoDB Builders -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>dynamodb-enhanced</artifactId>
+			<version>2.17.98</version>
+		</dependency>
+
+		<!-- AWS SDK V2 Core Builders -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>sdk-core</artifactId>
+			<version>2.17.98</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
-		<finalName>OrderfyApplication</finalName>
 		<plugins>
+			<!-- Other plugins -->
 			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version> <!-- Use a suitable version -->
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${org.mapstruct.version}</version>
+						</path>
+
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version> <!-- Use the Lombok version defined in your properties -->
+						</path>
+						<!-- Include other annotation processors if needed -->
+					</annotationProcessorPaths>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+					<compilerArgs>
+						<compilerArg>
+							-Amapstruct.defaultComponentModel=spring
+							-Amapstruct.verbose=true
+						</compilerArg>
+					</compilerArgs>
+				</configuration>
 			</plugin>
+			<!-- Other plugins -->
 		</plugins>
 	</build>
+
 
 </project>
